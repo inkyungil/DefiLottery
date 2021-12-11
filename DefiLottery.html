@@ -1,0 +1,542 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<script type="text/javascript" src='./js/web3.min.js'></script>
+
+<script>
+window.addEventListener('load', async () => {
+	if (window.ethereum) {
+		//window.alert('Modern dapp browsers')		
+		resultbrowsers.innerHTML = "Modern dapp browsers";
+	} else if (window.web3) {
+		//window.alert('Legacy dapp browsers')\
+		resultbrowsers.innerHTML = "Legacy dapp browsers";
+	} else {
+		//window.alert('Non-Ethereum browser detected. You should consider trying MetaMask!');
+		resultbrowsers.innerHTML = "Non-Ethereum browser detected. You should consider trying MetaMask!";
+	}
+
+
+	let btn = document.getElementById("setbetAmount");
+	btn.addEventListener('click', setbetAmountClicked);
+
+	btn = document.getElementById("setWinnerAmount");
+	btn.addEventListener('click', setWinnerAmountClicked);
+
+	const contractAddress = "0xb5c2edc02bcA5Dc247E8bc6A71c0A2788c71E79F";
+
+
+	window.accounts = await ethereum.request({ method: 'eth_requestAccounts' });
+	const showAccount = document.querySelector('.showAccount');
+	showAccount.innerHTML = accounts[0];
+
+	
+	window.web3 = new Web3(window.ethereum);
+	lottoevent = await new window.web3.eth.Contract(abiobj, contractAddress);
+
+
+	/*
+	  관리자 ACCOUNT
+	​*/
+	const manager = await lottoevent.methods.manager().call();
+	console.log("manager:: "+ manager);
+
+
+	/*
+	  응모금액
+	​*/
+	const amounts = await lottoevent.methods.getAmount().call();
+	console.log("amounts::"+ amounts);
+
+	/*
+	  총응모금액
+	​*/
+	const balance = await web3.eth.getBalance(lottoevent.options.address);
+
+	console.log("balance::"+ balance);
+
+	resultPlayersBalance.innerHTML = web3.utils.fromWei(balance, 'ether')+" ether";
+
+
+
+
+
+	/*
+	  응모자 ACCOUNT
+	​*/
+
+	const playersCnt = await lottoevent.methods.getTotal().call();
+	console.log("playersCnt::"+ playersCnt);
+	resultPlayersCnt.innerHTML = playersCnt;
+
+
+
+ 
+	/*
+	  응모자 리스트 VIEW
+	​*/
+
+	var i = 0;
+	while(i < playersCnt){
+
+    const playerInfo = await lottoevent.methods.getPlayers(i).call();
+
+		var html = '';
+
+		html += '<tr>';
+		html += '<td>'+(i+1)+'</td>';
+		html += '<td>'+playerInfo[0]+'</td>';
+		html += '<td>'+web3.utils.fromWei(playerInfo[1], 'ether')+'eth</td>';	
+		html += '</tr>';
+
+		$("#dynamicTbody").append(html);
+
+	  i = i +1;
+	}
+
+
+
+});
+
+
+
+	/*
+	  로또 참여하기
+	​*/
+	async function setbetAmountClicked(){
+	$('.wrap-loading').removeClass('display-none');
+
+
+	  if (lottoevent != null) {
+		try {
+
+        let val = document.getElementById("betAmount").value;
+
+
+        const accounts = await web3.eth.getAccounts();
+        console.log("-> "+web3.utils.toWei(val, 'ether'));
+
+        let receiptObj = await lottoevent.methods.LotteryApply().send({
+            from : accounts[0],
+            value : web3.utils.toWei(val, 'ether')
+        });
+
+        console.log(receiptObj);
+		resultbox.innerHTML = "트랜잭션이 성공 되었습니다";
+		$('.wrap-loading').addClass('display-none');
+		location.reload();
+
+
+		} catch (error) {
+			resultbox.innerHTML = "error occured";
+			$('.wrap-loading').addClass('display-none');
+			console.log(error);
+		}
+	  }
+	}
+
+
+
+
+	/*
+	  당첨금 지급하기
+	​*/
+	async function setWinnerAmountClicked(){
+	$('.wrap-loading').removeClass('display-none');
+
+
+	  if (lottoevent != null) {
+		try {
+        let val = document.getElementById("winnerAmount").value;
+
+
+        const accounts = await web3.eth.getAccounts();
+        console.log("-> "+web3.utils.toWei(val, 'ether'));
+
+        let receiptObj2 = await lottoevent.methods.WinnerSelection().send({
+            from : accounts[0],
+            value : web3.utils.toWei(val, 'ether')
+        });
+
+			console.log(receiptObj2);
+			$('.wrap-loading').addClass('display-none');
+			resultwinnerbox.innerHTML = "트랜잭션이 성공 되었습니다";
+			location.reload();
+
+
+		} catch (error) {
+			$('.wrap-loading').addClass('display-none');
+			resultwinnerbox.innerHTML = "error occured";
+			console.log(error);
+		}
+	  }
+	}
+
+
+const  abiobj =  [
+	{
+		"inputs": [],
+		"stateMutability": "nonpayable",
+		"type": "constructor"
+	},
+	{
+		"anonymous": false,
+		"inputs": [
+			{
+				"indexed": false,
+				"internalType": "address",
+				"name": "addr",
+				"type": "address"
+			},
+			{
+				"indexed": false,
+				"internalType": "uint256",
+				"name": "players_amount",
+				"type": "uint256"
+			},
+			{
+				"indexed": false,
+				"internalType": "uint256",
+				"name": "timestamp",
+				"type": "uint256"
+			}
+		],
+		"name": "EventLog",
+		"type": "event"
+	},
+	{
+		"anonymous": false,
+		"inputs": [
+			{
+				"indexed": false,
+				"internalType": "address",
+				"name": "addr",
+				"type": "address"
+			},
+			{
+				"indexed": false,
+				"internalType": "uint256",
+				"name": "players_amount",
+				"type": "uint256"
+			},
+			{
+				"indexed": false,
+				"internalType": "uint256",
+				"name": "timestamp",
+				"type": "uint256"
+			}
+		],
+		"name": "EventLogWinnner",
+		"type": "event"
+	},
+	{
+		"inputs": [],
+		"name": "LotteryApply",
+		"outputs": [],
+		"stateMutability": "payable",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "WinnerSelection",
+		"outputs": [],
+		"stateMutability": "payable",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "getAmount",
+		"outputs": [
+			{
+				"internalType": "uint256",
+				"name": "",
+				"type": "uint256"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "uint256",
+				"name": "_idx",
+				"type": "uint256"
+			}
+		],
+		"name": "getPlayers",
+		"outputs": [
+			{
+				"internalType": "address",
+				"name": "",
+				"type": "address"
+			},
+			{
+				"internalType": "uint256",
+				"name": "",
+				"type": "uint256"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "getTotal",
+		"outputs": [
+			{
+				"internalType": "uint256",
+				"name": "",
+				"type": "uint256"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "manager",
+		"outputs": [
+			{
+				"internalType": "address",
+				"name": "",
+				"type": "address"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "playerCount",
+		"outputs": [
+			{
+				"internalType": "uint256",
+				"name": "",
+				"type": "uint256"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "uint256",
+				"name": "",
+				"type": "uint256"
+			}
+		],
+		"name": "players",
+		"outputs": [
+			{
+				"internalType": "address",
+				"name": "addr",
+				"type": "address"
+			},
+			{
+				"internalType": "uint256",
+				"name": "players_amount",
+				"type": "uint256"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "totalAmount",
+		"outputs": [
+			{
+				"internalType": "uint256",
+				"name": "",
+				"type": "uint256"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	}
+];
+
+</script>
+ 
+<script src="//cdnjs.cloudflare.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
+<script src="//maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"></script>
+<link rel="stylesheet" href="//maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css">
+<style>
+.wrap-loading {
+    position: fixed;
+    left: 0;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.4); /*not in ie */
+    filter: progid:DXImageTransform.Microsoft.Gradient(startColorstr='#20000000',endColorstr='#20000000'); /* ie */
+    z-index: 999;
+}
+.wrap-loading div {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    margin-left: -21px;
+    margin-top: -21px;
+}
+.display-none {
+    display: none;
+}
+
+</style>
+
+<script>
+$(document).ready(function () {
+
+
+	$('#depositinterest').click(function()
+	{
+		clearInterval(timer);
+	});
+
+	/*
+	var count = 0;
+	var timer = setInterval(function(){
+		count = count + 0.025;
+		$('#winnerAmount').val(count.toFixed(2));
+	}, 2000);
+	*/
+
+})
+</script>
+
+
+
+</head>
+
+<body>
+ 
+ <!-- 로딩 -->
+<div class="wrap-loading display-none">
+    <div><img src="./images/loading2.gif" /></div>
+</div>    
+
+
+<!-- 참여하기 -->
+
+<section class="content">
+    <div class="container-fluid">
+        <div class="row">
+            <div class="col-md-6">
+                <div class="card card-secondary">
+                    <div class="card-header">
+                        <h3 class="card-title"><span id="resultbrowsers"></span></h3>
+						<h3 class="card-title">무손실 로또 게임</h3>
+                    </div>
+                    <div class="card-body">
+                        <div class="form-group">
+                            <label for="public_key">Account</label>
+                            <span class="showAccount"></span>
+                        </div>
+                        <div class="form-group">
+                            <label for="public_key">로또 구매하기: 참여 하기 입력</label>
+                            <input value="0.1" class="form-control" name="betAmount" id="betAmount" readonly/>
+                        </div>
+                        <div class="form-group">
+                                <pre><span id="resultbox">Result value</span></pre>
+
+                        </div>
+                    </div>
+                    <div class="card-footer">
+                        <button type="button" class="btn btn-primary" id="setbetAmount">무손실 로또 참여하기</button>
+                    </div>
+                </div>
+            </div>
+
+
+            <div class="col-md-6">
+                <div class="card card-secondary">
+                    <div class="card-header">
+                        <h3 class="card-title">응모현황</h3>
+                    </div>
+                    <div class="card-body">
+                       
+					<table class="table table-hover text-nowrap">
+					  <thead>
+						<tr>
+						  <th>순서</th>
+						  <th>응모자</th>
+						  <th>참여금액</th>
+						</tr>
+					  </thead>
+					  <tbody id="dynamicTbody"></tbody>
+					</table>
+
+                    </div>
+                </div>
+            </div>
+
+
+        </div>
+    </div>
+</section>
+
+
+
+
+<!-- 관리자 지급 -->
+
+<section class="content">
+    <div class="container-fluid">
+        <div class="row">
+            <div class="col-md-6">
+                <div class="card card-secondary">
+                    <div class="card-header">
+                        <h3 class="card-title">관리자 기능</h3>
+                    </div>
+                    <div class="card-body">
+                        <div class="form-group">
+                            <label for="resultPlayersCnt">참가자 수</label>
+                            <span id="resultPlayersCnt"> </span>
+                        </div>
+                        <div class="form-group">
+                            <label for="resultPlayersBalance">참가자-응모금액</label>
+                            <span id="resultPlayersBalance"> </span>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="winnerAmount">디파이 이자 금액 입력</label>
+                            <input value="1" class="form-control" name="winnerAmount" id="winnerAmount"/>
+                        </div>
+
+
+
+<!-- 
+                        <div class="form-group">
+                            <button type="button" class="btn btn-primary"  name="depositinterest" id="depositinterest">이자 확정</button>
+                        </div>
+ -->
+
+
+                        <div class="form-group">                           
+                            <pre><span id="resultwinnerbox">Result value</span></pre>
+                        </div>
+                    </div>
+                    <div class="card-footer">
+                        <button type="button" class="btn btn-primary"  name="setWinnerAmount" id="setWinnerAmount">당첨자 선정하기</button>
+                    </div>
+                </div>
+            </div>
+
+
+            <div class="col-md-6"></div>
+
+
+        </div>
+    </div>
+</section>
+ 
+</body>
+
+
+</html>
+
+
